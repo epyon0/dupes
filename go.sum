@@ -1,5 +1,7 @@
 github.com/epyon0/epyonLib v0.0.0-20260417144324-48eb8f7ae731 h1:csMUn/jMX7f/fJ2tqN+uUW3uY2E+uZ0a2hD86NmCwVM=
 github.com/epyon0/epyonLib v0.0.0-20260417144324-48eb8f7ae731/go.mod h1:QRfBYXKvlu/hiha1qLcF6Kh3kLtW0523mWBiLGNI9Sk=
+github.com/epyon0/epyonLib v0.0.0-20260417150902-774ad1c24c1f h1:BJuF31vgGLHEwzKY0yu0ewrDkKBbLBqWAVY550s7l3E=
+github.com/epyon0/epyonLib v0.0.0-20260417150902-774ad1c24c1f/go.mod h1:QRfBYXKvlu/hiha1qLcF6Kh3kLtW0523mWBiLGNI9Sk=
 github.com/nathan-fiscaletti/consolesize-go v0.0.0-20260406063853-3bac975de715 h1:FiSC3sz/k2SYB32YJ1bLlBVB7Li0N7n6jcYa9Knq/60=
 github.com/nathan-fiscaletti/consolesize-go v0.0.0-20260406063853-3bac975de715/go.mod h1:DQpEqvLUU3b35AJUVu5P6LFn/RY3qj4WtMjvrcE8gto=
 golang.org/x/sys v0.43.0 h1:Rlag2XtaFTxp19wS8MXlJwTvoh8ArU6ezoyFsMyCTNI=

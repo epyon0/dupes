@@ -33,18 +33,6 @@ var (
 	filesByCrcMutex sync.RWMutex
 )
 
-func TruncString(text string, width int) string {
-	if width < 0 {
-		return ""
-	}
-
-	runes := []rune(text)
-	if len(runes) <= width {
-		return text
-	}
-	return string(runes[:width])
-}
-
 func walkDir(path string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	sem <- struct{}{}
@@ -283,7 +271,7 @@ func calcCrc32(file string) (uint32, error) {
 			if verbose && term.IsTerminal(int(os.Stdout.Fd())) {
 				width, _, err := term.GetSize(int(os.Stdout.Fd()))
 				lib.Er(err)
-				fmt.Fprintf(os.Stdout, "\033[0G\033[0K%08X  %s", checksum, TruncString(file, width-10))
+				fmt.Fprintf(os.Stdout, "\033[0G\033[0K%08X  %s", checksum, lib.TruncString(file, width-10))
 			}
 		}
 		if err == io.EOF {
