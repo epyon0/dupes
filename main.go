@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
-	"math"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
 
 	"golang.org/x/term"
+
+	lib "github.com/epyon0/epyonLib"
 )
 
 var procTime bool
@@ -34,53 +33,6 @@ var (
 	filesByCrcMutex sync.RWMutex
 )
 
-func Er(err error) {
-	var now = time.Now()
-	pc, file, line, ok := runtime.Caller(1)
-
-	if !ok {
-		log.Fatal("error getting caller function\n")
-		os.Exit(1)
-	}
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", fmt.Sprintf("%02d:%02d:%02d.%04d | %v | %s:%d | ERROR: %v\n", now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000000, runtime.FuncForPC(pc).Name(), path.Base(file), line, err))
-		os.Exit(2)
-	}
-}
-
-func Verbose(text string, enabled ...bool) {
-	now := time.Now()
-	if len(enabled) > 0 && enabled[0] {
-		pc, file, line, ok := runtime.Caller(1)
-
-		if !ok {
-			Er(fmt.Errorf("error getting caller function\n"))
-		}
-
-		fmt.Fprintf(os.Stderr, "%s", fmt.Sprintf("%02d:%02d:%02d.%04d | %v | %s:%d | VERBOSE: %v\n", now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000000, runtime.FuncForPC(pc).Name(), path.Base(file), line, text))
-	}
-}
-
-func HumanizeBytes(number int64) string {
-	switch {
-	case number >= int64(math.Pow(2, 60)):
-		return fmt.Sprintf("%.02f EiB", float64(number)/math.Pow(2, 60))
-	case number >= int64(math.Pow(2, 50)):
-		return fmt.Sprintf("%.02f PiB", float64(number)/math.Pow(2, 50))
-	case number >= int64(math.Pow(2, 40)):
-		return fmt.Sprintf("%.02f TiB", float64(number)/math.Pow(2, 40))
-	case number >= int64(math.Pow(2, 30)):
-		return fmt.Sprintf("%.02f GiB", float64(number)/math.Pow(2, 30))
-	case number >= int64(math.Pow(2, 20)):
-		return fmt.Sprintf("%.02f MiB", float64(number)/math.Pow(2, 20))
-	case number >= int64(math.Pow(2, 10)):
-		return fmt.Sprintf("%.02f KiB", float64(number)/math.Pow(2, 10))
-	default:
-		return fmt.Sprintf("%.02f B", float64(number))
-	}
-}
-
 func TruncString(text string, width int) string {
 	if width < 0 {
 		return ""
@@ -98,11 +50,11 @@ func walkDir(path string, wg *sync.WaitGroup) {
 	sem <- struct{}{}
 	defer func() { <-sem }()
 
-	Verbose(fmt.Sprintf("RUNNING GOROUTINES: %d", runtime.NumGoroutine()), vvverbose)
+	lib.Verbose(fmt.Sprintf("RUNNING GOROUTINES: %d", runtime.NumGoroutine()), vvverbose)
 
 	info, err := os.Stat(path)
 	if err != nil {
-		Verbose(fmt.Sprintf("error getting info for %s: %v\n", path, err), vvverbose)
+		lib.Verbose(fmt.Sprintf("error getting info for %s: %v\n", path, err), vvverbose)
 		return
 	}
 
@@ -110,20 +62,20 @@ func walkDir(path string, wg *sync.WaitGroup) {
 
 	switch {
 	case fileMode.IsDir():
-		Verbose(fmt.Sprintf("Object is DIRECTORY: %s", path), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is DIRECTORY: %s", path), vvverbose)
 		entries, err := os.ReadDir(path)
 		if err != nil {
-			Verbose(fmt.Sprintf("error directroy [%s] (%v)", path, err), vvverbose)
+			lib.Verbose(fmt.Sprintf("error directroy [%s] (%v)", path, err), vvverbose)
 		}
 		for _, entry := range entries {
 			wg.Add(1)
 			go walkDir(filepath.Join(path, entry.Name()), wg)
 		}
 	case fileMode.IsRegular():
-		Verbose(fmt.Sprintf("Object is FILE: %s    SIZE: %s  [%d B]", path, HumanizeBytes(info.Size()), info.Size()), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is FILE: %s    SIZE: %s  [%d B]", path, lib.HumanizeBytes(info.Size(), false), info.Size()), vvverbose)
 		if verbose && term.IsTerminal(int(os.Stdout.Fd())) {
 			width, _, err := term.GetSize(int(os.Stdout.Fd()))
-			Er(err)
+			lib.Er(err)
 			fmt.Fprintf(os.Stdout, "\033[0G\033[0K%s", TruncString(path, width))
 		}
 		filesBySizeMutex.Lock()
@@ -134,13 +86,13 @@ func walkDir(path string, wg *sync.WaitGroup) {
 		}
 		filesBySizeMutex.Unlock()
 	case fileMode&os.ModeNamedPipe != 0:
-		Verbose(fmt.Sprintf("Object is NAMED PIPE: %s", path), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is NAMED PIPE: %s", path), vvverbose)
 	case fileMode&os.ModeSocket != 0:
-		Verbose(fmt.Sprintf("Object is SOCKET: %s", path), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is SOCKET: %s", path), vvverbose)
 	case fileMode&os.ModeSymlink != 0:
-		Verbose(fmt.Sprintf("Object is SYMBOLIC LINK: %s", path), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is SYMBOLIC LINK: %s", path), vvverbose)
 	default:
-		Verbose(fmt.Sprintf("Object is UNKNOWN: %s", path), vvverbose)
+		lib.Verbose(fmt.Sprintf("Object is UNKNOWN: %s", path), vvverbose)
 	}
 	if verbose {
 		fmt.Fprintf(os.Stdout, "\033[2K\033[0G")
@@ -177,7 +129,7 @@ func main() {
 			verbose = true
 			vverbose = true
 			procTime = true
-			Verbose("Very verbose enabled", vverbose)
+			lib.Verbose("Very verbose enabled", vverbose)
 		}
 
 		if arg == "-vvv" || arg == "--vvverbose" {
@@ -185,26 +137,26 @@ func main() {
 			vverbose = true
 			vvverbose = true
 			procTime = true
-			Verbose("Very very verbose enabled", vvverbose)
+			lib.Verbose("Very very verbose enabled", vvverbose)
 		}
 	}
 
 	for i := 0; i < len(args); i++ {
 		var arg string = args[i]
 
-		Verbose(fmt.Sprintf("Processing argument: [%s]", arg), vvverbose)
+		lib.Verbose(fmt.Sprintf("Processing argument: [%s]", arg), vvverbose)
 
 		if arg == "-d" || arg == "--dir" {
 			if i+1 < len(args) {
 				for j := i + 1; j < len(args); j++ {
 					info, err := os.Stat(args[j])
 					if err != nil {
-						Verbose(fmt.Sprintf("Invalid directory: [%s]", args[j]), vverbose)
+						lib.Verbose(fmt.Sprintf("Invalid directory: [%s]", args[j]), vverbose)
 					} else if info.IsDir() {
-						Verbose(fmt.Sprintf("Adding directory to queue: [%s]", args[j]), vvverbose)
+						lib.Verbose(fmt.Sprintf("Adding directory to queue: [%s]", args[j]), vvverbose)
 						dirs = append(dirs, args[j])
 					} else {
-						Verbose(fmt.Sprintf("Not a directory: [%s]", args[j]), vverbose)
+						lib.Verbose(fmt.Sprintf("Not a directory: [%s]", args[j]), vverbose)
 					}
 				}
 			}
@@ -238,16 +190,16 @@ func main() {
 	filesBySizeMutex.RLock()
 	for size, files := range filesBySize {
 		if len(files) > 1 {
-			Verbose(fmt.Sprintf("Found %d files with the same size [%s (%d B)]", len(files), HumanizeBytes(size), size), vvverbose)
+			lib.Verbose(fmt.Sprintf("Found %d files with the same size [%s (%d B)]", len(files), lib.HumanizeBytes(size, false), size), vvverbose)
 			for _, file := range files {
-				Verbose(fmt.Sprintf("Calculate CRC32 for file: [%s]", file), vvverbose)
+				lib.Verbose(fmt.Sprintf("Calculate CRC32 for file: [%s]", file), vvverbose)
 
 				crc, err := calcCrc32(file)
 				if err != nil {
-					Verbose(fmt.Sprintf("Error calculating CRC32 for file: [%s]", file), vvverbose)
+					lib.Verbose(fmt.Sprintf("Error calculating CRC32 for file: [%s]", file), vvverbose)
 				}
 
-				Verbose(fmt.Sprintf("CRC32 for file: [%s] [%08X]", file, crc), vvverbose)
+				lib.Verbose(fmt.Sprintf("CRC32 for file: [%s] [%08X]", file, crc), vvverbose)
 
 				//filesByCrcMutex.Lock()
 				filesByCrc[crc] = append(filesByCrc[crc], file)
@@ -261,10 +213,10 @@ func main() {
 	if outFile != "" {
 		fh, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			Verbose(fmt.Sprintf("error opening/creating/writing file: %s  [%v]", outFile, err), vverbose)
+			lib.Verbose(fmt.Sprintf("error opening/creating/writing file: %s  [%v]", outFile, err), vverbose)
 		} else {
 			_, err = fh.WriteString("FILENAME,CRC\n")
-			Er(err)
+			lib.Er(err)
 		}
 		defer fh.Close()
 	}
@@ -278,13 +230,13 @@ func main() {
 			for _, file := range files {
 				if outFile != "" {
 					fh, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-					Er(err)
+					lib.Er(err)
 					defer fh.Close()
 					if err != nil {
-						Verbose(fmt.Sprintf("error opening/creating/writing file: %s  [%v]", outFile, err), vverbose)
+						lib.Verbose(fmt.Sprintf("error opening/creating/writing file: %s  [%v]", outFile, err), vverbose)
 					} else {
 						_, err = fh.WriteString(fmt.Sprintf("%s,%08X\n", file, crc))
-						Er(err)
+						lib.Er(err)
 					}
 				}
 				if !quiet {
@@ -313,7 +265,7 @@ func debug() {
 }
 
 func calcCrc32(file string) (uint32, error) {
-	Verbose(fmt.Sprintf("Open file handle for: [%s]", file), vvverbose)
+	lib.Verbose(fmt.Sprintf("Open file handle for: [%s]", file), vvverbose)
 	fh, err := os.Open(file)
 	if err != nil {
 		return 0, fmt.Errorf("Error opening file: [%s] (%v)", file, err)
@@ -330,7 +282,7 @@ func calcCrc32(file string) (uint32, error) {
 			checksum = crc32.Update(checksum, table, buf[:n])
 			if verbose && term.IsTerminal(int(os.Stdout.Fd())) {
 				width, _, err := term.GetSize(int(os.Stdout.Fd()))
-				Er(err)
+				lib.Er(err)
 				fmt.Fprintf(os.Stdout, "\033[0G\033[0K%08X  %s", checksum, TruncString(file, width-10))
 			}
 		}
