@@ -64,7 +64,7 @@ func walkDir(path string, wg *sync.WaitGroup) {
 		if verbose && term.IsTerminal(int(os.Stdout.Fd())) {
 			width, _, err := term.GetSize(int(os.Stdout.Fd()))
 			lib.Er(err)
-			fmt.Fprintf(os.Stdout, "\033[0G\033[0K%s", TruncString(path, width))
+			fmt.Fprintf(os.Stdout, "\033[0G\033[0K%s", lib.TruncString(path, width))
 		}
 		filesBySizeMutex.Lock()
 		if _, exists := filesBySize[info.Size()]; exists {
